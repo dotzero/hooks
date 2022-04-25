@@ -15,11 +15,11 @@ import (
 //
 // 		// make and configure a mocked store
 // 		mockedstore := &storeMock{
+// 			CountFunc: func(name []byte) (int, error) {
+// 				panic("mock out the Count method")
+// 			},
 // 			HookFunc: func(name string) (*models.Hook, error) {
 // 				panic("mock out the Hook method")
-// 			},
-// 			HooksFunc: func(names []string) ([]*models.Hook, error) {
-// 				panic("mock out the Hooks method")
 // 			},
 // 			PutHookFunc: func(hook *models.Hook) error {
 // 				panic("mock out the PutHook method")
@@ -37,11 +37,11 @@ import (
 //
 // 	}
 type storeMock struct {
+	// CountFunc mocks the Count method.
+	CountFunc func(name []byte) (int, error)
+
 	// HookFunc mocks the Hook method.
 	HookFunc func(name string) (*models.Hook, error)
-
-	// HooksFunc mocks the Hooks method.
-	HooksFunc func(names []string) ([]*models.Hook, error)
 
 	// PutHookFunc mocks the PutHook method.
 	PutHookFunc func(hook *models.Hook) error
@@ -54,15 +54,15 @@ type storeMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Count holds details about calls to the Count method.
+		Count []struct {
+			// Name is the name argument value.
+			Name []byte
+		}
 		// Hook holds details about calls to the Hook method.
 		Hook []struct {
 			// Name is the name argument value.
 			Name string
-		}
-		// Hooks holds details about calls to the Hooks method.
-		Hooks []struct {
-			// Names is the names argument value.
-			Names []string
 		}
 		// PutHook holds details about calls to the PutHook method.
 		PutHook []struct {
@@ -82,11 +82,42 @@ type storeMock struct {
 			Hook string
 		}
 	}
+	lockCount      sync.RWMutex
 	lockHook       sync.RWMutex
-	lockHooks      sync.RWMutex
 	lockPutHook    sync.RWMutex
 	lockPutRequest sync.RWMutex
 	lockRequests   sync.RWMutex
+}
+
+// Count calls CountFunc.
+func (mock *storeMock) Count(name []byte) (int, error) {
+	if mock.CountFunc == nil {
+		panic("storeMock.CountFunc: method is nil but store.Count was just called")
+	}
+	callInfo := struct {
+		Name []byte
+	}{
+		Name: name,
+	}
+	mock.lockCount.Lock()
+	mock.calls.Count = append(mock.calls.Count, callInfo)
+	mock.lockCount.Unlock()
+	return mock.CountFunc(name)
+}
+
+// CountCalls gets all the calls that were made to Count.
+// Check the length with:
+//     len(mockedstore.CountCalls())
+func (mock *storeMock) CountCalls() []struct {
+	Name []byte
+} {
+	var calls []struct {
+		Name []byte
+	}
+	mock.lockCount.RLock()
+	calls = mock.calls.Count
+	mock.lockCount.RUnlock()
+	return calls
 }
 
 // Hook calls HookFunc.
@@ -117,37 +148,6 @@ func (mock *storeMock) HookCalls() []struct {
 	mock.lockHook.RLock()
 	calls = mock.calls.Hook
 	mock.lockHook.RUnlock()
-	return calls
-}
-
-// Hooks calls HooksFunc.
-func (mock *storeMock) Hooks(names []string) ([]*models.Hook, error) {
-	if mock.HooksFunc == nil {
-		panic("storeMock.HooksFunc: method is nil but store.Hooks was just called")
-	}
-	callInfo := struct {
-		Names []string
-	}{
-		Names: names,
-	}
-	mock.lockHooks.Lock()
-	mock.calls.Hooks = append(mock.calls.Hooks, callInfo)
-	mock.lockHooks.Unlock()
-	return mock.HooksFunc(names)
-}
-
-// HooksCalls gets all the calls that were made to Hooks.
-// Check the length with:
-//     len(mockedstore.HooksCalls())
-func (mock *storeMock) HooksCalls() []struct {
-	Names []string
-} {
-	var calls []struct {
-		Names []string
-	}
-	mock.lockHooks.RLock()
-	calls = mock.calls.Hooks
-	mock.lockHooks.RUnlock()
 	return calls
 }
 

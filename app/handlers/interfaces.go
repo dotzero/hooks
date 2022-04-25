@@ -13,6 +13,7 @@ type store interface {
 	PutHook(hook *models.Hook) error
 	Requests(hook string) ([]*models.Request, error)
 	PutRequest(hook string, req *models.Request) error
+	Count(name []byte) (int, error)
 }
 
 type tpl interface {

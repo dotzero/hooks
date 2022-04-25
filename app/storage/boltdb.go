@@ -209,19 +209,19 @@ func (b *BoltDB) Expired(ttlName []byte, maxAge time.Duration) (keys [][]byte, e
 	return
 }
 
-// MustStats returns BucketStats, panic if fails
-func (b *BoltDB) MustStats(bkt []byte) bolt.BucketStats {
+// Count returns number of keys in bucket
+func (b *BoltDB) Count(name []byte) (int, error) {
 	var stats bolt.BucketStats
 
 	err := b.db.View(func(tx *bolt.Tx) error {
-		stats = tx.Bucket(bkt).Stats()
+		stats = tx.Bucket(name).Stats()
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
-	return stats
+	return stats.KeyN, nil
 }
 
 // save marshaled value to key for bucket. Should run in update tx

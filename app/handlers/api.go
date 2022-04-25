@@ -69,3 +69,25 @@ func APIHook(s store) http.HandlerFunc {
 		render.JSON(w, r, req)
 	}
 }
+
+// APIHook handle storage stats
+func APIStats(s store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hooks, err := s.Count([]byte("hooks"))
+		if err != nil {
+			renderError(w, r, err)
+			return
+		}
+
+		requests, err := s.Count([]byte("requests"))
+		if err != nil {
+			renderError(w, r, err)
+			return
+		}
+
+		render.JSON(w, r, map[string]int{
+			"hooks":    hooks,
+			"requests": requests,
+		})
+	}
+}

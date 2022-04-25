@@ -8,6 +8,9 @@ github.com/dustin/go-humanize
 ## explicit; go 1.16
 github.com/go-chi/chi
 github.com/go-chi/chi/middleware
+# github.com/go-chi/cors v1.2.1
+## explicit; go 1.14
+github.com/go-chi/cors
 # github.com/go-chi/render v1.0.1
 ## explicit
 github.com/go-chi/render

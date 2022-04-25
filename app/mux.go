@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 
 	"github.com/dotzero/hooks/app/handlers"
@@ -26,17 +27,23 @@ func (a *App) makeHTTPServer(address string, port int, router http.Handler) *htt
 func (a *App) routes() *chi.Mux {
 	router := chi.NewRouter()
 
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		MaxAge:         300,
+	})
+
 	router.Use(middleware.Logger)
 	router.Use(middleware.NoCache)
 	router.Use(middleware.RealIP)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.RedirectSlashes)
-	// router.Use(middleware.CORS)
-	// Access-Control-Allow-Origin
+	router.Use(corsMiddleware.Handler)
 
 	router.Get("/", handlers.WebHome(a.Storage, a.Templates.Lookup("home.html"), a.AppURL))
 	router.Get("/i/{hook}", handlers.WebInspect(a.Storage, a.Templates.Lookup("hook.html"), a.AppURL))
 	router.Post("/api/create", handlers.APICreate(a.Storage))
+	router.Get("/api/stats", handlers.APIStats(a.Storage))
 	router.Handle("/{hook}", handlers.APIHook(a.Storage))
 
 	router.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {

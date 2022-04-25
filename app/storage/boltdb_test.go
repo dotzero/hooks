@@ -28,8 +28,8 @@ func TestHook(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, exp, act)
 
-	assert.Equal(t, 1, s.MustStats(hooksName).KeyN)
-	assert.Equal(t, 1, s.MustStats(hooksTTLName).KeyN)
+	assert.Equal(t, 1, mustCount(s, hooksName))
+	assert.Equal(t, 1, mustCount(s, hooksTTLName))
 
 	err = s.db.View(func(tx *bolt.Tx) error {
 		count := btoi(tx.Bucket(countersName).Get(hooksName))
@@ -65,8 +65,8 @@ func TestRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 2)
 
-	assert.Equal(t, 3, s.MustStats(reqsName).KeyN)
-	assert.Equal(t, 2, s.MustStats(reqsTTLName).KeyN)
+	assert.Equal(t, 3, mustCount(s, reqsName))
+	assert.Equal(t, 2, mustCount(s, reqsTTLName))
 
 	err = s.db.View(func(tx *bolt.Tx) error {
 		count := btoi(tx.Bucket(countersName).Get(reqsName))
@@ -91,14 +91,14 @@ func TestSweep(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, 10, s.MustStats(hooksName).KeyN)
-	assert.Equal(t, 10, s.MustStats(hooksTTLName).KeyN)
+	assert.Equal(t, 10, mustCount(s, hooksName))
+	assert.Equal(t, 10, mustCount(s, hooksTTLName))
 
 	err := s.Sweep(hooksName, hooksTTLName, 5*time.Hour)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 5, s.MustStats(hooksName).KeyN)
-	assert.Equal(t, 5, s.MustStats(hooksTTLName).KeyN)
+	assert.Equal(t, 5, mustCount(s, hooksName))
+	assert.Equal(t, 5, mustCount(s, hooksTTLName))
 }
 
 func TestExpired(t *testing.T) {
@@ -115,15 +115,15 @@ func TestExpired(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, 10, s.MustStats(hooksName).KeyN)
-	assert.Equal(t, 10, s.MustStats(hooksTTLName).KeyN)
+	assert.Equal(t, 10, mustCount(s, hooksName))
+	assert.Equal(t, 10, mustCount(s, hooksTTLName))
 
 	keys, err := s.Expired(hooksTTLName, 5*time.Hour)
 
 	assert.NoError(t, err)
 	assert.Len(t, keys, 5)
-	assert.Equal(t, 10, s.MustStats(hooksName).KeyN)
-	assert.Equal(t, 5, s.MustStats(hooksTTLName).KeyN) // deleted
+	assert.Equal(t, 10, mustCount(s, hooksName))
+	assert.Equal(t, 5, mustCount(s, hooksTTLName)) // deleted
 }
 
 func newTestBoltDB() *BoltDB {
@@ -150,4 +150,13 @@ func tempfile() string {
 	}
 
 	return f.Name()
+}
+
+func mustCount(db *BoltDB, bkt []byte) int {
+	count, err := db.Count(hooksName)
+	if err != nil {
+		panic(err)
+	}
+
+	return count
 }
