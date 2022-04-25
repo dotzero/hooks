@@ -15,15 +15,19 @@ import (
 // BoltDB is a wrapper over Bolt DB
 type BoltDB struct {
 	db *bolt.DB
-	// maxAge time.Time
 }
 
 var (
-	hooksName    = []byte("hooks")
-	hooksTTLName = []byte("hooks_ttl")
-	reqsName     = []byte("requests")
-	reqsTTLName  = []byte("requests_ttl")
-	countersName = []byte("counters")
+	// BucketHooks name of the hooks bucket
+	BucketHooks = []byte("hooks")
+	// BucketHooksTTL name of the hooks ttl bucket
+	BucketHooksTTL = []byte("hooks_ttl")
+	// BucketReqs name of the requests bucket
+	BucketReqs = []byte("requests")
+	// BucketReqsTTL name of the requests bucket
+	BucketReqsTTL = []byte("requests_ttl")
+	// BucketCounters name of the counters bucket
+	BucketCounters = []byte("counters")
 )
 
 // New returns a wrapper over Bolt DB
@@ -34,7 +38,7 @@ func New(path string) (*BoltDB, error) {
 	}
 
 	// ensure buckets exists
-	buckets := [][]byte{hooksName, hooksTTLName, reqsName, reqsTTLName, countersName}
+	buckets := [][]byte{BucketHooks, BucketHooksTTL, BucketReqs, BucketReqsTTL, BucketCounters}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, name := range buckets {
@@ -63,7 +67,7 @@ func (b *BoltDB) Hook(name string) (*models.Hook, error) {
 	var hook *models.Hook
 
 	err := b.db.View(func(tx *bolt.Tx) error {
-		bHooks := tx.Bucket(hooksName)
+		bHooks := tx.Bucket(BucketHooks)
 
 		return b.load(bHooks, name, &hook)
 	})
@@ -74,21 +78,21 @@ func (b *BoltDB) Hook(name string) (*models.Hook, error) {
 // PutHook save hook model into storage
 func (b *BoltDB) PutHook(hook *models.Hook) error {
 	return b.db.Update(func(tx *bolt.Tx) error {
-		bHooks := tx.Bucket(hooksName)
+		bHooks := tx.Bucket(BucketHooks)
 		if err := b.save(bHooks, hook.Name, hook); err != nil {
 			return err
 		}
 
-		bTTL := tx.Bucket(hooksTTLName)
+		bTTL := tx.Bucket(BucketHooksTTL)
 		key := []byte(hook.Created.UTC().Format(time.RFC3339Nano))
 		if err := bTTL.Put(key, []byte(hook.Name)); err != nil {
 			return err
 		}
 
-		bCounters := tx.Bucket(countersName)
-		count := btoi(bCounters.Get(hooksName)) + 1
+		bCounters := tx.Bucket(BucketCounters)
+		count := btoi(bCounters.Get(BucketHooks)) + 1
 
-		return bCounters.Put(hooksName, itob(count))
+		return bCounters.Put(BucketHooks, itob(count))
 	})
 }
 
@@ -97,7 +101,7 @@ func (b *BoltDB) Requests(hook string) ([]*models.Request, error) {
 	requests := make([]*models.Request, 0)
 
 	err := b.db.View(func(tx *bolt.Tx) error {
-		bRequests := tx.Bucket(reqsName).Bucket([]byte(hook))
+		bRequests := tx.Bucket(BucketReqs).Bucket([]byte(hook))
 		if bRequests == nil {
 			return nil
 		}
@@ -132,21 +136,21 @@ func (b *BoltDB) PutRequest(hook string, req *models.Request) error {
 			return err
 		}
 
-		bTTL := tx.Bucket(reqsTTLName)
+		bTTL := tx.Bucket(BucketReqsTTL)
 		key := []byte(req.Created.UTC().Format(time.RFC3339Nano))
 		if err := bTTL.Put(key, []byte(req.Name)); err != nil {
 			return err
 		}
 
-		bCounters := tx.Bucket(countersName)
-		count := btoi(bCounters.Get(reqsName)) + 1
+		bCounters := tx.Bucket(BucketCounters)
+		count := btoi(bCounters.Get(BucketReqs)) + 1
 
-		return bCounters.Put(reqsName, itob(count))
+		return bCounters.Put(BucketReqs, itob(count))
 	})
 }
 
 func (b *BoltDB) reqsBucket(tx *bolt.Tx, name string) (*bolt.Bucket, error) {
-	bkt, err := tx.Bucket(reqsName).CreateBucketIfNotExists([]byte(name))
+	bkt, err := tx.Bucket(BucketReqs).CreateBucketIfNotExists([]byte(name))
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +174,10 @@ func (b *BoltDB) Sweep(bktName []byte, ttlName []byte, maxAge time.Duration) (er
 			}
 		}
 
-		// TODO: decriment
+		bCounters := tx.Bucket(BucketCounters)
+		count := btoi(bCounters.Get(bktName)) - len(keys)
 
-		return nil
+		return bCounters.Put(bktName, itob(count))
 	})
 }
 

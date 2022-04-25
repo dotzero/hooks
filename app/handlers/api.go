@@ -70,7 +70,7 @@ func APIHook(s store) http.HandlerFunc {
 	}
 }
 
-// APIHook handle storage stats
+// APIStats handle storage stats
 func APIStats(s store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hooks, err := s.Count([]byte("hooks"))

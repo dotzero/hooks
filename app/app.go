@@ -1,12 +1,17 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"image/color"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/zero-pkg/tpl"
@@ -17,10 +22,10 @@ import (
 
 // App is a Hook application
 type App struct {
-	Storage   *storage.BoltDB
-	Templates *tpl.Templates
-
 	CommonOpts
+	Storage    *storage.BoltDB
+	Templates  *tpl.Templates
+	httpServer *http.Server
 }
 
 const (
@@ -45,11 +50,33 @@ func New(commonOpts CommonOpts) (*App, error) {
 
 // Run listens on the TCP network address srv.Addr and then
 // calls Serve to handle requests on incoming connections.
-func (a *App) Run(address string, port int) error {
-	addr := fmt.Sprintf("%s:%d", address, port)
-	log.Printf("[INFO] http server listen at: http://" + addr)
+func (a *App) Run(ctx context.Context, address string, port int) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	return a.makeHTTPServer(address, port, a.routes()).ListenAndServe()
+	a.httpServer = a.makeHTTPServer(address, port, a.routes())
+
+	go func() {
+		addr := fmt.Sprintf("%s:%d", address, port)
+		log.Printf("[INFO] http server listen at: http://" + addr)
+
+		err := a.httpServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("[ERROR] failed to listen and serve, %+v", err)
+		}
+	}()
+
+	go a.sweep(ctx)
+
+	<-ctx.Done()
+	stop()
+
+	fmt.Println("shutting down gracefully, press Ctrl+C again to force")
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return a.httpServer.Shutdown(timeoutCtx)
 }
 
 // setupDataStore initializes BoltDB store

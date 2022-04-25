@@ -8,6 +8,7 @@ import (
 type CommonOpts struct {
 	AppURL     string
 	BoltPath   string
+	BoltTTL    int
 	StaticPath string
 	TmlPath    string
 	TplExt     string
@@ -17,6 +18,7 @@ type CommonOpts struct {
 func (c *CommonOpts) SetCommon(commonOpts CommonOpts) {
 	c.AppURL = strings.TrimSuffix(commonOpts.AppURL, "/")
 	c.BoltPath = strings.TrimSuffix(commonOpts.BoltPath, "/")
+	c.BoltTTL = commonOpts.BoltTTL
 	c.StaticPath = strings.TrimSuffix(commonOpts.StaticPath, "/")
 	c.TmlPath = strings.TrimSuffix(commonOpts.TmlPath, "/")
 	c.TplExt = commonOpts.TplExt

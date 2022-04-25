@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -28,11 +29,11 @@ func TestHook(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, exp, act)
 
-	assert.Equal(t, 1, mustCount(s, hooksName))
-	assert.Equal(t, 1, mustCount(s, hooksTTLName))
+	assert.Equal(t, 1, mustCount(s, BucketHooks))
+	assert.Equal(t, 1, mustCount(s, BucketHooksTTL))
 
 	err = s.db.View(func(tx *bolt.Tx) error {
-		count := btoi(tx.Bucket(countersName).Get(hooksName))
+		count := btoi(tx.Bucket(BucketCounters).Get(BucketHooks))
 		assert.Equal(t, 1, count)
 
 		return nil
@@ -65,11 +66,11 @@ func TestRequest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, reqs, 2)
 
-	assert.Equal(t, 3, mustCount(s, reqsName))
-	assert.Equal(t, 2, mustCount(s, reqsTTLName))
+	assert.Equal(t, 3, mustCount(s, BucketReqs)) // 1 hook keys + 2 nested
+	assert.Equal(t, 2, mustCount(s, BucketReqsTTL))
 
 	err = s.db.View(func(tx *bolt.Tx) error {
-		count := btoi(tx.Bucket(countersName).Get(reqsName))
+		count := btoi(tx.Bucket(BucketCounters).Get(BucketReqs))
 		assert.Equal(t, 2, count)
 
 		return nil
@@ -91,14 +92,22 @@ func TestSweep(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, 10, mustCount(s, hooksName))
-	assert.Equal(t, 10, mustCount(s, hooksTTLName))
+	assert.Equal(t, 10, mustCount(s, BucketHooks))
+	assert.Equal(t, 10, mustCount(s, BucketHooksTTL))
 
-	err := s.Sweep(hooksName, hooksTTLName, 5*time.Hour)
+	err := s.Sweep(BucketHooks, BucketHooksTTL, 5*time.Hour)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 5, mustCount(s, hooksName))
-	assert.Equal(t, 5, mustCount(s, hooksTTLName))
+	assert.Equal(t, 5, mustCount(s, BucketHooks))
+	assert.Equal(t, 5, mustCount(s, BucketHooksTTL))
+
+	err = s.db.View(func(tx *bolt.Tx) error {
+		count := btoi(tx.Bucket(BucketCounters).Get(BucketHooks))
+		assert.Equal(t, 5, count)
+
+		return nil
+	})
+	assert.NoError(t, err)
 }
 
 func TestExpired(t *testing.T) {
@@ -115,15 +124,15 @@ func TestExpired(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.Equal(t, 10, mustCount(s, hooksName))
-	assert.Equal(t, 10, mustCount(s, hooksTTLName))
+	assert.Equal(t, 10, mustCount(s, BucketHooks))
+	assert.Equal(t, 10, mustCount(s, BucketHooksTTL))
 
-	keys, err := s.Expired(hooksTTLName, 5*time.Hour)
+	keys, err := s.Expired(BucketHooksTTL, 5*time.Hour)
 
 	assert.NoError(t, err)
 	assert.Len(t, keys, 5)
-	assert.Equal(t, 10, mustCount(s, hooksName))
-	assert.Equal(t, 5, mustCount(s, hooksTTLName)) // deleted
+	assert.Equal(t, 10, mustCount(s, BucketHooks))
+	assert.Equal(t, 5, mustCount(s, BucketHooksTTL)) // deleted
 }
 
 func newTestBoltDB() *BoltDB {
@@ -153,10 +162,34 @@ func tempfile() string {
 }
 
 func mustCount(db *BoltDB, bkt []byte) int {
-	count, err := db.Count(hooksName)
+	count, err := db.Count(bkt)
 	if err != nil {
 		panic(err)
 	}
 
 	return count
+}
+
+// nolint
+func tree(db *bolt.DB) {
+	db.View(func(tx *bolt.Tx) error {
+		return tx.ForEach(func(name []byte, b *bolt.Bucket) error {
+			fmt.Printf("[%s]\n", name)
+			return nested(b, "  ")
+		})
+	})
+
+}
+
+// nolint
+func nested(b *bolt.Bucket, prefix string) error {
+	return b.ForEach(func(k, v []byte) error {
+		fmt.Printf("%s%s:%s\n", prefix, k, v)
+
+		if b := b.Bucket(k); b != nil {
+			return nested(b, prefix+"  ")
+		}
+
+		return nil
+	})
 }
