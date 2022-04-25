@@ -1,0 +1,34 @@
+{{ extends "layout.html" }}
+{{ define "head" }}
+  <script type="text/javascript">
+    function createHook() {
+      $.ajax({'url': '/api/create', 'type': 'POST',
+        'data': {'private': $('#private').prop("checked")},
+        'success': function(data) {
+          window.location.href = "/i/"+data['name'];
+        }
+      });
+    }
+  </script>
+{{ end }}
+{{ define "content" }}
+  <div class="row-fluid">
+    <div class="banner-hero">
+      <h2 class="banner-header"><span class="accent-bg-red">Inspect HTTP Requests</span></h2>
+      <h3 class="banner-subheader">
+        Hooks gives you a URL that will collect requests made to it and let you inspect them in a human-friendly way.<br>
+        Use Hooks to see what your HTTP client is sending or to inspect and debug webhook requests.
+      </h3>
+      <form class="form-inline">
+        <p class="banner-button">
+          <a class="btn btn-success btn-large" onclick="createHook()"><i class="icon-plus-sign"></i> Create a Hook</a>
+        </p>
+        <p class="banner-option">
+          <label class="checkbox" title="Private hooks can only be viewed by you using a browser cookie">
+            <input id="private" type="checkbox" /> &nbsp;Private <small>(only viewable from this browser)</small>
+          </label>
+        </p>
+      </form>
+    </div>
+  </div>
+{{ end }}

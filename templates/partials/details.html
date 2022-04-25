@@ -1,0 +1,46 @@
+<div id="request-detail-{{ .Name }}" class="request-detail">
+  <div class="row-fluid">
+    <div class="span4">
+      <h5>FORM/POST PARAMETERS</h5>
+      {{ if .FormData }}
+        {{ range $key, $value := .FormData }}
+          <p class="keypair"><strong>{{ $key }}:</strong> {{ $value }}</p>
+        {{ end }}
+      {{ else }}
+        <em>None</em>
+      {{ end }}
+
+      <h5>QUERYSTRING</h5>
+      {{ if .QueryData }}
+        {{ range $key, $value := .QueryData }}
+          {{ if $value }}
+            <p class="keypair"><strong>{{ $key }}:</strong> {{ $value }}</p>
+          {{ else }}
+            <p class="keypair"><strong>{{ $key }}</strong></p>
+          {{ end }}
+        {{ end }}
+      {{ else }}
+        <em>None</em>
+      {{ end }}
+    </div>
+    <div class="span8">
+      <h5>HEADERS</h5>
+      {{ if .Headers }}
+        {{ range $key, $value := .Headers }}
+          <p class="keypair"><strong>{{ $key }}:</strong> {{ $value }}</p>
+        {{ end }}
+      {{ else }}
+        <em>None</em>
+      {{ end }}
+    </div>
+  </div>
+
+  <h5>RAW BODY</h5>
+  <div class="request-body" data-id="{{ .Name }}">
+    {{ if .Body }}
+      <pre class="body prettyprint">{{ .Body }}</pre>
+    {{ else }}
+      <em>None</em>
+    {{ end }}
+  </div>
+</div>
