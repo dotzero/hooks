@@ -10,11 +10,12 @@ import (
 )
 
 // WebHome handle home page
-func WebHome(s store, t tpl, baseURL string) http.HandlerFunc {
+func WebHome(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := t.Execute(w, &views.Home{
 			Common: views.Common{
 				BaseURL: baseURL,
+				TTL:     ttl,
 				Recent:  nil,
 			},
 		})
@@ -25,7 +26,7 @@ func WebHome(s store, t tpl, baseURL string) http.HandlerFunc {
 }
 
 // WebInspect handle hook page
-func WebInspect(s store, t tpl, baseURL string) http.HandlerFunc {
+func WebInspect(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hook, err := s.Hook(chi.URLParam(r, "hook"))
 		if err != nil {
@@ -54,6 +55,7 @@ func WebInspect(s store, t tpl, baseURL string) http.HandlerFunc {
 		err = t.Execute(w, &views.Hook{
 			Common: views.Common{
 				BaseURL: baseURL,
+				TTL:     ttl,
 			},
 			Hook: hook,
 		})

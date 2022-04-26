@@ -7,6 +7,7 @@ import (
 // Common view struct
 type Common struct {
 	BaseURL string
+	TTL     int
 	Recent  []*models.Hook
 }
 

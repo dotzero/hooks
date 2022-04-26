@@ -40,8 +40,8 @@ func (a *App) routes() *chi.Mux {
 	router.Use(middleware.RedirectSlashes)
 	router.Use(corsMiddleware.Handler)
 
-	router.Get("/", handlers.WebHome(a.Storage, a.Templates.Lookup("home.html"), a.AppURL))
-	router.Get("/i/{hook}", handlers.WebInspect(a.Storage, a.Templates.Lookup("hook.html"), a.AppURL))
+	router.Get("/", handlers.WebHome(a.Storage, a.Templates.Lookup("home.html"), a.AppURL, a.BoltTTL))
+	router.Get("/i/{hook}", handlers.WebInspect(a.Storage, a.Templates.Lookup("hook.html"), a.AppURL, a.BoltTTL))
 	router.Post("/api/create", handlers.APICreate(a.Storage))
 	router.Get("/api/stats", handlers.APIStats(a.Storage))
 	router.Handle("/{hook}", handlers.APIHook(a.Storage))
