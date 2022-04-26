@@ -32,3 +32,39 @@ jobs:
         run: $GITHUB_WORKSPACE/golangci-lint run
         env:
           GOFLAGS: "-mod=vendor"
+
+  build-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: Build and deploy master image to ghcr.io and dockerhub
+        if: ${{ github.ref == 'refs/heads/master' }}
+        env:
+          GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          USERNAME: ${{ github.actor }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
+          echo "VERSION=${ref}, COMMIT_HASH=${GITHUB_SHA}"
+          echo ${GITHUB_PACKAGE_TOKEN} | docker login ghcr.io -u ${USERNAME} --password-stdin
+          echo ${DOCKER_HUB_TOKEN} | docker login -u ${USERNAME} --password-stdin
+          docker buildx build --push \
+              --build-arg CI=github --build-arg VERSION=${ref} --build-arg COMMIT_HASH=${GITHUB_SHA} \
+              --platform linux/amd64,linux/arm/v7,linux/arm64 \
+              -t ghcr.io/dotzero/hooks:${ref} -t ghcr.io/dotzero/hooks:latest \
+              -t dotzero/hooks:${ref} -t dotzero/hooks:latest .
