@@ -1,10 +1,17 @@
 package models
 
 import (
+	"io"
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
+)
+
+const (
+	maxBodySize = 1024 * 10
 )
 
 // Request is a hook request model
@@ -25,42 +32,87 @@ type Request struct {
 
 // NewRequest returns a new request model
 func NewRequest(r *http.Request) *Request {
-	body, _ := ioutil.ReadAll(r.Body)
-	defer func() { _ = r.Body.Close() }()
+	_ = r.ParseForm()
 
-	contentType := r.Header.Get("Content-Type")
-
-	d, _, err := mime.ParseMediaType(contentType)
-	if err == nil && d != "" {
-		contentType = d
-	}
-
-	req := &Request{
+	return &Request{
 		Name:          tinyID(),
 		RemoteAddr:    r.RemoteAddr,
 		Method:        r.Method,
 		Path:          r.URL.Path,
 		Query:         r.URL.RawQuery,
-		Body:          string(body),
-		ContentType:   contentType,
+		Body:          parseBody(r.Body),
+		ContentType:   parseContentType(r.Header),
 		ContentLength: r.ContentLength,
-		Headers:       make(map[string]string, len(r.Header)),
-		FormData:      make(map[string]string, len(r.PostForm)),
-		QueryData:     make(map[string]string, len(r.URL.Query())),
+		Headers:       parseHeaders(r.Header),
+		FormData:      parseFormData(r.PostForm),
+		QueryData:     parseQueryData(r.URL.Query()),
 		Created:       time.Now(),
 	}
+}
 
-	for name, value := range r.Header {
-		req.Headers[name] = value[0]
+func parseBody(reader io.ReadCloser) string {
+	body, _ := ioutil.ReadAll(reader)
+	defer func() { _ = reader.Close() }()
+
+	if len(body) > maxBodySize {
+		return string(body[0:maxBodySize])
 	}
 
-	for name, value := range r.PostForm {
-		req.FormData[name] = value[0]
+	return string(body)
+}
+
+func parseContentType(headers http.Header) string {
+	contentType := headers.Get("Content-Type")
+
+	d, _, err := mime.ParseMediaType(contentType)
+	if err == nil && d != "" {
+		return d
 	}
 
-	for name, value := range r.URL.Query() {
-		req.QueryData[name] = value[0]
+	return contentType
+}
+
+func parseHeaders(headers http.Header) map[string]string {
+	ignore := map[string]struct{}{
+		"x-varnish":                {},
+		"x-forwarded-for":          {},
+		"x-heroku-dynos-in-use":    {},
+		"x-request-start":          {},
+		"x-heroku-queue-wait-time": {},
+		"x-heroku-queue-depth":     {},
+		"x-real-ip":                {},
+		"x-forwarded-proto":        {},
+		"x-via":                    {},
+		"x-forwarded-port":         {},
 	}
 
-	return req
+	parsed := make(map[string]string, len(headers))
+
+	for name, value := range headers {
+		if _, ok := ignore[strings.ToLower(name)]; !ok {
+			parsed[name] = value[0]
+		}
+	}
+
+	return parsed
+}
+
+func parseFormData(form url.Values) map[string]string {
+	parsed := make(map[string]string, len(form))
+
+	for name, value := range form {
+		parsed[name] = value[0]
+	}
+
+	return parsed
+}
+
+func parseQueryData(query url.Values) map[string]string {
+	parsed := make(map[string]string, len(query))
+
+	for name, value := range query {
+		parsed[name] = value[0]
+	}
+
+	return parsed
 }
