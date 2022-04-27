@@ -71,7 +71,7 @@ func APIHook(s store) http.HandlerFunc {
 }
 
 // APIStats handle storage stats
-func APIStats(s store) http.HandlerFunc {
+func APIStats(s store, ttl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hooks, err := s.Count([]byte("hooks"))
 		if err != nil {
@@ -86,8 +86,9 @@ func APIStats(s store) http.HandlerFunc {
 		}
 
 		render.JSON(w, r, map[string]int{
-			"hooks":    hooks,
-			"requests": requests,
+			"ttl_hours": ttl,
+			"hooks":     hooks,
+			"requests":  requests,
 		})
 	}
 }

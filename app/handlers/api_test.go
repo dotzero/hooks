@@ -146,7 +146,7 @@ func TestAPIStats(t *testing.T) {
 		},
 	}
 
-	handler := APIStats(s)
+	handler := APIStats(s, 24)
 
 	router := chi.NewRouter()
 	router.Post("/api", handler)
@@ -155,7 +155,7 @@ func TestAPIStats(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"hooks":10,"requests":10}`, w.Body.String())
+	assert.JSONEq(t, `{"hooks":10,"requests":10,"ttl_hours":24}`, w.Body.String())
 }
 
 func TestAPIStatsError(t *testing.T) {
@@ -165,7 +165,7 @@ func TestAPIStatsError(t *testing.T) {
 		},
 	}
 
-	handler := APIStats(s)
+	handler := APIStats(s, 24)
 
 	router := chi.NewRouter()
 	router.Post("/api", handler)
