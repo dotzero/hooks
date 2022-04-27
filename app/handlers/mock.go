@@ -27,6 +27,9 @@ import (
 // 			PutRequestFunc: func(hook string, req *models.Request) error {
 // 				panic("mock out the PutRequest method")
 // 			},
+// 			RecentHooksFunc: func(max int) ([]*models.Hook, error) {
+// 				panic("mock out the RecentHooks method")
+// 			},
 // 			RequestsFunc: func(hook string) ([]*models.Request, error) {
 // 				panic("mock out the Requests method")
 // 			},
@@ -48,6 +51,9 @@ type storeMock struct {
 
 	// PutRequestFunc mocks the PutRequest method.
 	PutRequestFunc func(hook string, req *models.Request) error
+
+	// RecentHooksFunc mocks the RecentHooks method.
+	RecentHooksFunc func(max int) ([]*models.Hook, error)
 
 	// RequestsFunc mocks the Requests method.
 	RequestsFunc func(hook string) ([]*models.Request, error)
@@ -76,17 +82,23 @@ type storeMock struct {
 			// Req is the req argument value.
 			Req *models.Request
 		}
+		// RecentHooks holds details about calls to the RecentHooks method.
+		RecentHooks []struct {
+			// Max is the max argument value.
+			Max int
+		}
 		// Requests holds details about calls to the Requests method.
 		Requests []struct {
 			// Hook is the hook argument value.
 			Hook string
 		}
 	}
-	lockCount      sync.RWMutex
-	lockHook       sync.RWMutex
-	lockPutHook    sync.RWMutex
-	lockPutRequest sync.RWMutex
-	lockRequests   sync.RWMutex
+	lockCount       sync.RWMutex
+	lockHook        sync.RWMutex
+	lockPutHook     sync.RWMutex
+	lockPutRequest  sync.RWMutex
+	lockRecentHooks sync.RWMutex
+	lockRequests    sync.RWMutex
 }
 
 // Count calls CountFunc.
@@ -214,6 +226,37 @@ func (mock *storeMock) PutRequestCalls() []struct {
 	mock.lockPutRequest.RLock()
 	calls = mock.calls.PutRequest
 	mock.lockPutRequest.RUnlock()
+	return calls
+}
+
+// RecentHooks calls RecentHooksFunc.
+func (mock *storeMock) RecentHooks(max int) ([]*models.Hook, error) {
+	if mock.RecentHooksFunc == nil {
+		panic("storeMock.RecentHooksFunc: method is nil but store.RecentHooks was just called")
+	}
+	callInfo := struct {
+		Max int
+	}{
+		Max: max,
+	}
+	mock.lockRecentHooks.Lock()
+	mock.calls.RecentHooks = append(mock.calls.RecentHooks, callInfo)
+	mock.lockRecentHooks.Unlock()
+	return mock.RecentHooksFunc(max)
+}
+
+// RecentHooksCalls gets all the calls that were made to RecentHooks.
+// Check the length with:
+//     len(mockedstore.RecentHooksCalls())
+func (mock *storeMock) RecentHooksCalls() []struct {
+	Max int
+} {
+	var calls []struct {
+		Max int
+	}
+	mock.lockRecentHooks.RLock()
+	calls = mock.calls.RecentHooks
+	mock.lockRecentHooks.RUnlock()
 	return calls
 }
 

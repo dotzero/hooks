@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -94,6 +95,43 @@ func (b *BoltDB) PutHook(hook *models.Hook) error {
 
 		return bCounters.Put(BucketHooks, itob(count))
 	})
+}
+
+// RecentHooks returns recent public hooks
+func (b *BoltDB) RecentHooks(max int) ([]*models.Hook, error) {
+	hooks := make([]*models.Hook, 0, max)
+
+	err := b.db.View(func(tx *bolt.Tx) error {
+		bHooks := tx.Bucket(BucketHooks)
+
+		return bHooks.ForEach(func(k, v []byte) error {
+			var hook models.Hook
+
+			err := json.Unmarshal(v, &hook)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal: %w", err)
+			}
+
+			if !hook.Private {
+				hooks = append(hooks, &hook)
+			}
+
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(hooks, func(i, j int) bool {
+		return hooks[i].Created.After(hooks[j].Created)
+	})
+
+	if len(hooks) > max {
+		return hooks[0:max], nil
+	}
+
+	return hooks, nil
 }
 
 // Requests returns hook requests by hook name

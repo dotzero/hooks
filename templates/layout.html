@@ -41,8 +41,7 @@
             {{ range .Common.Recent }}
               <li>
                 <a href="{{ $.Common.BaseURL }}/i/{{ .Name }}"><i class="icon-circle" style="color: rgb({{ rgb .Color }})"></i></a>
-                <a href="{{ $.Common.BaseURL }}/i/{{ .Name }}">{{ .Name }}</a> {{ if .Private }}<i class="icon-lock"></i>{{ end }}
-                ({{ len .Requests }})
+                <a href="{{ $.Common.BaseURL }}/i/{{ .Name }}">{{ .Name }}</a>
               </li>
             {{ end }}
           </ul>
@@ -57,4 +56,3 @@
     {{ block "script" . }}{{ end }}
   </body>
 </html>
-

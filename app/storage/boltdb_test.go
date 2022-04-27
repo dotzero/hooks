@@ -41,6 +41,26 @@ func TestHook(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRecentHooks(t *testing.T) {
+	s := newTestBoltDB()
+	defer s.Close()
+
+	for i := 0; i < 10; i++ {
+		err := s.PutHook(models.NewHook(false))
+		assert.NoError(t, err)
+
+		err = s.PutHook(models.NewHook(true))
+		assert.NoError(t, err)
+	}
+
+	assert.Equal(t, 20, mustCount(s, BucketHooks))
+
+	hooks, err := s.RecentHooks(5)
+
+	assert.NoError(t, err)
+	assert.Len(t, hooks, 5)
+}
+
 func TestRequest(t *testing.T) {
 	s := newTestBoltDB()
 	defer s.Close()

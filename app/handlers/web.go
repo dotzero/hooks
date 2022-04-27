@@ -9,14 +9,24 @@ import (
 	"github.com/dotzero/hooks/app/views"
 )
 
+const (
+	maxRecent = 10
+)
+
 // WebHome handle home page
 func WebHome(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := t.Execute(w, &views.Home{
+		recent, err := s.RecentHooks(maxRecent)
+		if err != nil {
+			renderError(w, r, err)
+			return
+		}
+
+		err = t.Execute(w, &views.Home{
 			Common: views.Common{
 				BaseURL: baseURL,
 				TTL:     ttl,
-				Recent:  nil,
+				Recent:  recent,
 			},
 		})
 		if err != nil {
@@ -52,10 +62,17 @@ func WebInspect(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 
 		hook.Requests = requests
 
+		recent, err := s.RecentHooks(maxRecent)
+		if err != nil {
+			renderError(w, r, err)
+			return
+		}
+
 		err = t.Execute(w, &views.Hook{
 			Common: views.Common{
 				BaseURL: baseURL,
 				TTL:     ttl,
+				Recent:  recent,
 			},
 			Hook: hook,
 		})
