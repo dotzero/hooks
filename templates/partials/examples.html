@@ -4,8 +4,8 @@
 <h5>Python (with Requests)</h5>
 <pre class="prettyprint">import requests, time
 r = requests.post('{{ .Common.BaseURL }}/{{ .Hook.Name }}', data={"ts":time.time()})
-print r.status_code
-print r.content</pre>
+print(r.status_code)
+print(r.content)</pre>
 
 <h5>Node.js (with request)</h5>
 <pre class="prettyprint">var request = require('request');

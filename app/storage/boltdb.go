@@ -159,6 +159,10 @@ func (b *BoltDB) Requests(hook string) ([]*models.Request, error) {
 		return nil, err
 	}
 
+	sort.Slice(requests, func(i, j int) bool {
+		return requests[i].Created.After(requests[j].Created)
+	})
+
 	return requests, nil
 }
 
