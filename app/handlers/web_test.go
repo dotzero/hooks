@@ -13,7 +13,11 @@ import (
 )
 
 func TestWebHome(t *testing.T) {
-	s := &storeMock{}
+	s := &storeMock{
+		RecentHooksFunc: func(max int) ([]*models.Hook, error) {
+			return nil, nil
+		},
+	}
 	tmpl := &tplMock{
 		ExecuteFunc: func(wr io.Writer, data interface{}) error {
 			return nil
@@ -32,7 +36,11 @@ func TestWebHome(t *testing.T) {
 }
 
 func TestWebHomeError(t *testing.T) {
-	s := &storeMock{}
+	s := &storeMock{
+		RecentHooksFunc: func(max int) ([]*models.Hook, error) {
+			return nil, nil
+		},
+	}
 	tmpl := &tplMock{
 		ExecuteFunc: func(wr io.Writer, data interface{}) error {
 			return errors.New("storage error")
@@ -59,6 +67,9 @@ func TestWebInspect(t *testing.T) {
 			return &models.Hook{
 				Name: name,
 			}, nil
+		},
+		RecentHooksFunc: func(max int) ([]*models.Hook, error) {
+			return nil, nil
 		},
 		RequestsFunc: func(hook string) ([]*models.Request, error) {
 			assert.Equal(t, "foo", hook)
@@ -93,6 +104,9 @@ func TestWebInspectPrivate(t *testing.T) {
 				Private: true,
 				Secret:  "private", // stored in testRequest()
 			}, nil
+		},
+		RecentHooksFunc: func(max int) ([]*models.Hook, error) {
+			return nil, nil
 		},
 		RequestsFunc: func(hook string) ([]*models.Request, error) {
 			assert.Equal(t, "private", hook)

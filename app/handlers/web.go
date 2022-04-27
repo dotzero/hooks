@@ -10,7 +10,9 @@ import (
 )
 
 const (
-	maxRecent = 10
+	maxRecent    = 10
+	urlParam     = "hook"
+	cookiePrefix = "hook_"
 )
 
 // WebHome handle home page
@@ -38,7 +40,7 @@ func WebHome(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 // WebInspect handle hook page
 func WebInspect(s store, t tpl, baseURL string, ttl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		hook, err := s.Hook(chi.URLParam(r, "hook"))
+		hook, err := s.Hook(chi.URLParam(r, urlParam))
 		if err != nil {
 			renderError(w, r, err)
 			return
@@ -87,7 +89,7 @@ func checkAccess(r *http.Request, hook *models.Hook) bool {
 		return true
 	}
 
-	c, err := r.Cookie("hook_" + hook.Name)
+	c, err := r.Cookie(cookiePrefix + hook.Name)
 	if c == nil || err != nil {
 		return false
 	}

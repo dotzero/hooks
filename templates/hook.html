@@ -39,7 +39,7 @@
     <h2 class="text-center">
       <input class="xxlarge input-xxlarge" type="text" value="{{ .Common.BaseURL }}/{{ .Hook.Name }}" onclick="this.select()" style="border-color: rgb({{ rgb .Hook.Color }}); border-width: 3px;" />
     </h2>
-    {{ if .Hook.Private }}<p class="text-center">This is a private hook. Requests are only viewable from this computer.</p>{{ end }}
+    {{ if .Hook.Private }}<p class="text-center">This is a private hook. Requests are only viewable from this browser.</p>{{ end }}
     <hr>
     <div class="row-fluid">
       <div class="span6 offset3">
@@ -49,7 +49,7 @@
         <div class="alert-message block-message info">
           <h4>Limits</h4>
           <p>This {{ if .Hook.Private }}<strong>private</strong>{{ end }}
-          hook will keep the last 20 requests made to it and remain available for {{ .Common.TTL }} hours after it was created.
+          hook will remain available for {{ .Common.TTL }} hours after it was created.
           However, data might be cleared at any time, so <strong>treat hooks as highly ephemeral</strong>.</p>
         </div>
       </div>

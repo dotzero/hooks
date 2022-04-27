@@ -27,7 +27,7 @@ func APICreate(s store) http.HandlerFunc {
 
 		if private {
 			cookie := &http.Cookie{
-				Name:     "hook_" + hook.Name,
+				Name:     cookiePrefix + hook.Name,
 				Value:    hook.Secret,
 				Path:     "/",
 				MaxAge:   86400, // 24 hours
@@ -48,7 +48,7 @@ func APIHook(s store) http.HandlerFunc {
 			return
 		}
 
-		hook, err := s.Hook(chi.URLParam(r, "hook"))
+		hook, err := s.Hook(chi.URLParam(r, urlParam))
 		if err != nil {
 			renderError(w, r, err)
 			return
