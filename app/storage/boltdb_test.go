@@ -27,6 +27,9 @@ func TestHook(t *testing.T) {
 
 	act, err := s.Hook(exp.Name)
 	assert.NoError(t, err)
+	now := time.Now()
+	exp.Created = now
+	act.Created = now
 	assert.Equal(t, exp, act)
 
 	assert.Equal(t, 1, mustCount(s, BucketHooks))
