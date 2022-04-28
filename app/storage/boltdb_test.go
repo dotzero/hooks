@@ -198,7 +198,6 @@ func tree(db *bolt.DB) {
 			return nested(b, "  ")
 		})
 	})
-
 }
 
 // nolint
