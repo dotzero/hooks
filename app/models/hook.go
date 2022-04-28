@@ -30,7 +30,7 @@ func NewHook(private bool) *Hook {
 
 	hook := &Hook{
 		Name:    tinyID(),
-		Created: time.Now().UTC(),
+		Created: time.Now(),
 		Color:   [4]uint8{rgba.R, rgba.G, rgba.B, rgba.A},
 	}
 

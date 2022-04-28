@@ -85,7 +85,7 @@ func (b *BoltDB) PutHook(hook *models.Hook) error {
 		}
 
 		bTTL := tx.Bucket(BucketHooksTTL)
-		key := []byte(hook.Created.UTC().Format(time.RFC3339Nano))
+		key := []byte(hook.Created.Format(time.RFC3339Nano))
 		if err := bTTL.Put(key, []byte(hook.Name)); err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func (b *BoltDB) PutRequest(hook string, req *models.Request) error {
 		}
 
 		bTTL := tx.Bucket(BucketReqsTTL)
-		key := []byte(req.Created.UTC().Format(time.RFC3339Nano))
+		key := []byte(req.Created.Format(time.RFC3339Nano))
 		if err := bTTL.Put(key, []byte(req.Name)); err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (b *BoltDB) Expired(ttlName []byte, maxAge time.Duration) (keys [][]byte, e
 	err = b.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ttlName).Cursor()
 
-		max := []byte(time.Now().UTC().Add(-maxAge).Format(time.RFC3339Nano))
+		max := []byte(time.Now().Add(-maxAge).Format(time.RFC3339Nano))
 		for k, v := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
 			keys = append(keys, v)
 			ttlKeys = append(ttlKeys, k)

@@ -102,7 +102,7 @@ func TestSweep(t *testing.T) {
 	s := newTestBoltDB()
 	defer s.Close()
 
-	now := time.Now().UTC()
+	now := time.Now()
 
 	for i := 0; i < 10; i++ {
 		hook := models.NewHook(false)
@@ -134,7 +134,7 @@ func TestExpired(t *testing.T) {
 	s := newTestBoltDB()
 	defer s.Close()
 
-	now := time.Now().UTC()
+	now := time.Now()
 
 	for i := 0; i < 10; i++ {
 		hook := models.NewHook(false)
