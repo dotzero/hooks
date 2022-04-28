@@ -27,9 +27,11 @@ func TestHook(t *testing.T) {
 
 	act, err := s.Hook(exp.Name)
 	assert.NoError(t, err)
+
 	now := time.Now()
 	exp.Created = now
 	act.Created = now
+
 	assert.Equal(t, exp, act)
 
 	assert.Equal(t, 1, mustCount(s, BucketHooks))
@@ -109,6 +111,7 @@ func TestSweep(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		hook := models.NewHook(false)
+		hook.Name = fmt.Sprintf("%d", i)
 		hook.Created = now.Add(time.Duration(-i) * time.Hour)
 
 		err := s.PutHook(hook)
@@ -118,9 +121,15 @@ func TestSweep(t *testing.T) {
 	assert.Equal(t, 10, mustCount(s, BucketHooks))
 	assert.Equal(t, 10, mustCount(s, BucketHooksTTL))
 
-	err := s.Sweep(BucketHooks, BucketHooksTTL, 5*time.Hour)
-
+	err := s.Sweep(BucketHooks, BucketHooksTTL, time.Duration(7)*time.Hour)
 	assert.NoError(t, err)
+
+	assert.Equal(t, 7, mustCount(s, BucketHooks))
+	assert.Equal(t, 7, mustCount(s, BucketHooksTTL))
+
+	err = s.Sweep(BucketHooks, BucketHooksTTL, time.Duration(5)*time.Hour)
+	assert.NoError(t, err)
+
 	assert.Equal(t, 5, mustCount(s, BucketHooks))
 	assert.Equal(t, 5, mustCount(s, BucketHooksTTL))
 
