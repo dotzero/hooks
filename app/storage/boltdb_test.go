@@ -92,18 +92,21 @@ func TestSweepHooks(t *testing.T) {
 	}
 
 	assert.Equal(t, 10, mustCount(s, BucketHooks))
+	assert.Equal(t, 60, mustCount(s, BucketReqs))
 	assert.Equal(t, 10, mustCount(s, BucketTTL))
 
 	err := s.SweepHooks(time.Duration(7) * time.Hour)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 7, mustCount(s, BucketHooks))
+	assert.Equal(t, 42, mustCount(s, BucketReqs))
 	assert.Equal(t, 7, mustCount(s, BucketTTL))
 
 	err = s.SweepHooks(time.Duration(5) * time.Hour)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 5, mustCount(s, BucketHooks))
+	assert.Equal(t, 30, mustCount(s, BucketReqs))
 	assert.Equal(t, 5, mustCount(s, BucketTTL))
 
 	err = s.db.View(func(tx *bolt.Tx) error {

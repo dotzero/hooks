@@ -207,10 +207,7 @@ func (b *BoltDB) PutRequest(hook string, req *models.Request) error {
 			return err
 		}
 
-		bCounters := tx.Bucket(BucketCounters)
-		count := btoi(bCounters.Get(BucketReqs)) + 1
-
-		return bCounters.Put(BucketReqs, itob(count))
+		return nil
 	})
 }
 
