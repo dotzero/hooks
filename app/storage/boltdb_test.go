@@ -35,7 +35,7 @@ func TestHook(t *testing.T) {
 	assert.Equal(t, exp, act)
 
 	assert.Equal(t, 1, mustCount(s, BucketHooks))
-	assert.Equal(t, 1, mustCount(s, BucketHooksTTL))
+	assert.Equal(t, 1, mustCount(s, BucketTTL))
 
 	err = s.db.View(func(tx *bolt.Tx) error {
 		count := btoi(tx.Bucket(BucketCounters).Get(BucketHooks))
@@ -66,6 +66,55 @@ func TestRecentHooks(t *testing.T) {
 	assert.Len(t, hooks, 5)
 }
 
+func TestSweepHooks(t *testing.T) {
+	s := newTestBoltDB()
+	defer s.Close()
+
+	now := time.Now()
+
+	for i := 0; i < 10; i++ {
+		hook := models.NewHook(false)
+		hook.Name = fmt.Sprintf("%d", i)
+		hook.Created = now.Add(time.Duration(-i) * time.Hour)
+
+		err := s.PutHook(hook)
+		assert.NoError(t, err)
+
+		for j := 0; j < 5; j++ {
+			req := &models.Request{
+				Name:    fmt.Sprintf("%s|%d", hook.Name, j),
+				Created: now.Add(time.Duration(-j) * time.Hour),
+			}
+
+			err := s.PutRequest(hook.Name, req)
+			assert.NoError(t, err)
+		}
+	}
+
+	assert.Equal(t, 10, mustCount(s, BucketHooks))
+	assert.Equal(t, 10, mustCount(s, BucketTTL))
+
+	err := s.SweepHooks(time.Duration(7) * time.Hour)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 7, mustCount(s, BucketHooks))
+	assert.Equal(t, 7, mustCount(s, BucketTTL))
+
+	err = s.SweepHooks(time.Duration(5) * time.Hour)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 5, mustCount(s, BucketHooks))
+	assert.Equal(t, 5, mustCount(s, BucketTTL))
+
+	err = s.db.View(func(tx *bolt.Tx) error {
+		count := btoi(tx.Bucket(BucketCounters).Get(BucketHooks))
+		assert.Equal(t, 5, count)
+
+		return nil
+	})
+	assert.NoError(t, err)
+}
+
 func TestRequest(t *testing.T) {
 	s := newTestBoltDB()
 	defer s.Close()
@@ -92,54 +141,6 @@ func TestRequest(t *testing.T) {
 	assert.Len(t, reqs, 2)
 
 	assert.Equal(t, 3, mustCount(s, BucketReqs)) // 1 hook keys + 2 nested
-	assert.Equal(t, 2, mustCount(s, BucketReqsTTL))
-
-	err = s.db.View(func(tx *bolt.Tx) error {
-		count := btoi(tx.Bucket(BucketCounters).Get(BucketReqs))
-		assert.Equal(t, 2, count)
-
-		return nil
-	})
-	assert.NoError(t, err)
-}
-
-func TestSweep(t *testing.T) {
-	s := newTestBoltDB()
-	defer s.Close()
-
-	now := time.Now()
-
-	for i := 0; i < 10; i++ {
-		hook := models.NewHook(false)
-		hook.Name = fmt.Sprintf("%d", i)
-		hook.Created = now.Add(time.Duration(-i) * time.Hour)
-
-		err := s.PutHook(hook)
-		assert.NoError(t, err)
-	}
-
-	assert.Equal(t, 10, mustCount(s, BucketHooks))
-	assert.Equal(t, 10, mustCount(s, BucketHooksTTL))
-
-	err := s.Sweep(BucketHooks, BucketHooksTTL, time.Duration(7)*time.Hour)
-	assert.NoError(t, err)
-
-	assert.Equal(t, 7, mustCount(s, BucketHooks))
-	assert.Equal(t, 7, mustCount(s, BucketHooksTTL))
-
-	err = s.Sweep(BucketHooks, BucketHooksTTL, time.Duration(5)*time.Hour)
-	assert.NoError(t, err)
-
-	assert.Equal(t, 5, mustCount(s, BucketHooks))
-	assert.Equal(t, 5, mustCount(s, BucketHooksTTL))
-
-	err = s.db.View(func(tx *bolt.Tx) error {
-		count := btoi(tx.Bucket(BucketCounters).Get(BucketHooks))
-		assert.Equal(t, 5, count)
-
-		return nil
-	})
-	assert.NoError(t, err)
 }
 
 func TestExpired(t *testing.T) {
@@ -157,14 +158,14 @@ func TestExpired(t *testing.T) {
 	}
 
 	assert.Equal(t, 10, mustCount(s, BucketHooks))
-	assert.Equal(t, 10, mustCount(s, BucketHooksTTL))
+	assert.Equal(t, 10, mustCount(s, BucketTTL))
 
-	keys, err := s.Expired(BucketHooksTTL, 5*time.Hour)
+	keys, err := s.Expired(BucketTTL, 5*time.Hour)
 
 	assert.NoError(t, err)
 	assert.Len(t, keys, 5)
 	assert.Equal(t, 10, mustCount(s, BucketHooks))
-	assert.Equal(t, 5, mustCount(s, BucketHooksTTL)) // deleted
+	assert.Equal(t, 5, mustCount(s, BucketTTL)) // deleted
 }
 
 func newTestBoltDB() *BoltDB {

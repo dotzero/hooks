@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -21,12 +22,10 @@ type BoltDB struct {
 var (
 	// BucketHooks name of the hooks bucket
 	BucketHooks = []byte("hooks")
-	// BucketHooksTTL name of the hooks ttl bucket
-	BucketHooksTTL = []byte("hooks_ttl")
 	// BucketReqs name of the requests bucket
 	BucketReqs = []byte("requests")
-	// BucketReqsTTL name of the requests bucket
-	BucketReqsTTL = []byte("requests_ttl")
+	// BucketTTL name of the ttl bucket
+	BucketTTL = []byte("ttl")
 	// BucketCounters name of the counters bucket
 	BucketCounters = []byte("counters")
 )
@@ -39,7 +38,7 @@ func New(path string) (*BoltDB, error) {
 	}
 
 	// ensure buckets exists
-	buckets := [][]byte{BucketHooks, BucketHooksTTL, BucketReqs, BucketReqsTTL, BucketCounters}
+	buckets := [][]byte{BucketHooks, BucketReqs, BucketTTL, BucketCounters}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, name := range buckets {
@@ -84,7 +83,7 @@ func (b *BoltDB) PutHook(hook *models.Hook) error {
 			return err
 		}
 
-		bTTL := tx.Bucket(BucketHooksTTL)
+		bTTL := tx.Bucket(BucketTTL)
 		key := []byte(hook.Created.Format(time.RFC3339Nano))
 		if err := bTTL.Put(key, []byte(hook.Name)); err != nil {
 			return err
@@ -134,6 +133,36 @@ func (b *BoltDB) RecentHooks(max int) ([]*models.Hook, error) {
 	return hooks, nil
 }
 
+// SweepHooks performs a batch delete of all bucket items using the keys picked up from expired func
+func (b *BoltDB) SweepHooks(maxAge time.Duration) (err error) {
+	keys, err := b.Expired(BucketTTL, maxAge)
+	if err != nil || len(keys) == 0 {
+		return
+	}
+
+	return b.db.Update(func(tx *bolt.Tx) error {
+		bHooks := tx.Bucket(BucketHooks)
+		bReqs := tx.Bucket(BucketReqs)
+
+		for _, key := range keys {
+			if err = bHooks.Delete(key); err != nil {
+				return err
+			}
+
+			if err = bReqs.DeleteBucket(key); err != nil {
+				if !errors.Is(err, bolt.ErrBucketNotFound) {
+					return err
+				}
+			}
+		}
+
+		bCounters := tx.Bucket(BucketCounters)
+		count := btoi(bCounters.Get(BucketHooks)) - len(keys)
+
+		return bCounters.Put(BucketHooks, itob(count))
+	})
+}
+
 // Requests returns hook requests by hook name
 func (b *BoltDB) Requests(hook string) ([]*models.Request, error) {
 	requests := make([]*models.Request, 0)
@@ -178,12 +207,6 @@ func (b *BoltDB) PutRequest(hook string, req *models.Request) error {
 			return err
 		}
 
-		bTTL := tx.Bucket(BucketReqsTTL)
-		key := []byte(req.Created.Format(time.RFC3339Nano))
-		if err := bTTL.Put(key, []byte(req.Name)); err != nil {
-			return err
-		}
-
 		bCounters := tx.Bucket(BucketCounters)
 		count := btoi(bCounters.Get(BucketReqs)) + 1
 
@@ -198,29 +221,6 @@ func (b *BoltDB) reqsBucket(tx *bolt.Tx, name string) (*bolt.Bucket, error) {
 	}
 
 	return bkt, nil
-}
-
-// Sweep performs a batch delete of all bucket items using the keys picked up from expired func
-func (b *BoltDB) Sweep(bktName []byte, ttlName []byte, maxAge time.Duration) (err error) {
-	keys, err := b.Expired(ttlName, maxAge)
-	if err != nil || len(keys) == 0 {
-		return
-	}
-
-	return b.db.Update(func(tx *bolt.Tx) error {
-		bkt := tx.Bucket(bktName)
-
-		for _, key := range keys {
-			if err = bkt.Delete(key); err != nil {
-				return err
-			}
-		}
-
-		bCounters := tx.Bucket(BucketCounters)
-		count := btoi(bCounters.Get(bktName)) - len(keys)
-
-		return bCounters.Put(bktName, itob(count))
-	})
 }
 
 // Expired returns list of keys that have ttl older than maxAge

@@ -79,16 +79,9 @@ func APIStats(s store, ttl int) http.HandlerFunc {
 			return
 		}
 
-		requests, err := s.Count([]byte("requests"))
-		if err != nil {
-			renderError(w, r, err)
-			return
-		}
-
 		render.JSON(w, r, map[string]int{
 			"ttl_hours": ttl,
 			"hooks":     hooks,
-			"requests":  requests,
 		})
 	}
 }
