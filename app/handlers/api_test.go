@@ -141,8 +141,13 @@ func TestAPIHookCases(t *testing.T) {
 
 func TestAPIStats(t *testing.T) {
 	s := &storeMock{
-		CountFunc: func(name []byte) (int, error) {
-			return 10, nil
+		CountersFunc: func() (map[string]int, error) {
+			return map[string]int{
+				"hooks": 5,
+				"req1":  3,
+				"req2":  2,
+				"req3":  5,
+			}, nil
 		},
 	}
 
@@ -155,13 +160,13 @@ func TestAPIStats(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"hooks":10,"ttl_hours":24}`, w.Body.String())
+	assert.JSONEq(t, `{"hooks":5,"requests":10,"ttl_hours":24}`, w.Body.String())
 }
 
 func TestAPIStatsError(t *testing.T) {
 	s := &storeMock{
-		CountFunc: func(name []byte) (int, error) {
-			return 0, errors.New("storage error")
+		CountersFunc: func() (map[string]int, error) {
+			return nil, errors.New("storage error")
 		},
 	}
 

@@ -143,6 +143,7 @@ func (b *BoltDB) SweepHooks(maxAge time.Duration) (err error) {
 	return b.db.Update(func(tx *bolt.Tx) error {
 		bHooks := tx.Bucket(BucketHooks)
 		bReqs := tx.Bucket(BucketReqs)
+		bCounters := tx.Bucket(BucketCounters)
 
 		for _, key := range keys {
 			if err = bHooks.Delete(key); err != nil {
@@ -154,9 +155,12 @@ func (b *BoltDB) SweepHooks(maxAge time.Duration) (err error) {
 					return err
 				}
 			}
+
+			if err = bCounters.Delete(key); err != nil {
+				return err
+			}
 		}
 
-		bCounters := tx.Bucket(BucketCounters)
 		count := btoi(bCounters.Get(BucketHooks)) - len(keys)
 
 		return bCounters.Put(BucketHooks, itob(count))
@@ -207,7 +211,10 @@ func (b *BoltDB) PutRequest(hook string, req *models.Request) error {
 			return err
 		}
 
-		return nil
+		bCounters := tx.Bucket(BucketCounters)
+		count := btoi(bCounters.Get([]byte(hook))) + 1
+
+		return bCounters.Put([]byte(hook), itob(count))
 	})
 }
 
@@ -251,6 +258,26 @@ func (b *BoltDB) Expired(ttlName []byte, maxAge time.Duration) (keys [][]byte, e
 	})
 
 	return
+}
+
+// Counters returns list of counters
+func (b *BoltDB) Counters() (map[string]int, error) {
+	counters := make(map[string]int)
+
+	err := b.db.View(func(tx *bolt.Tx) error {
+		bCounters := tx.Bucket(BucketCounters)
+
+		return bCounters.ForEach(func(k, v []byte) error {
+			counters[string(k)] = btoi(v)
+
+			return nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return counters, nil
 }
 
 // Count returns number of keys in bucket

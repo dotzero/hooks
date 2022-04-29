@@ -18,6 +18,9 @@ import (
 // 			CountFunc: func(name []byte) (int, error) {
 // 				panic("mock out the Count method")
 // 			},
+// 			CountersFunc: func() (map[string]int, error) {
+// 				panic("mock out the Counters method")
+// 			},
 // 			HookFunc: func(name string) (*models.Hook, error) {
 // 				panic("mock out the Hook method")
 // 			},
@@ -43,6 +46,9 @@ type storeMock struct {
 	// CountFunc mocks the Count method.
 	CountFunc func(name []byte) (int, error)
 
+	// CountersFunc mocks the Counters method.
+	CountersFunc func() (map[string]int, error)
+
 	// HookFunc mocks the Hook method.
 	HookFunc func(name string) (*models.Hook, error)
 
@@ -64,6 +70,9 @@ type storeMock struct {
 		Count []struct {
 			// Name is the name argument value.
 			Name []byte
+		}
+		// Counters holds details about calls to the Counters method.
+		Counters []struct {
 		}
 		// Hook holds details about calls to the Hook method.
 		Hook []struct {
@@ -94,6 +103,7 @@ type storeMock struct {
 		}
 	}
 	lockCount       sync.RWMutex
+	lockCounters    sync.RWMutex
 	lockHook        sync.RWMutex
 	lockPutHook     sync.RWMutex
 	lockPutRequest  sync.RWMutex
@@ -129,6 +139,32 @@ func (mock *storeMock) CountCalls() []struct {
 	mock.lockCount.RLock()
 	calls = mock.calls.Count
 	mock.lockCount.RUnlock()
+	return calls
+}
+
+// Counters calls CountersFunc.
+func (mock *storeMock) Counters() (map[string]int, error) {
+	if mock.CountersFunc == nil {
+		panic("storeMock.CountersFunc: method is nil but store.Counters was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockCounters.Lock()
+	mock.calls.Counters = append(mock.calls.Counters, callInfo)
+	mock.lockCounters.Unlock()
+	return mock.CountersFunc()
+}
+
+// CountersCalls gets all the calls that were made to Counters.
+// Check the length with:
+//     len(mockedstore.CountersCalls())
+func (mock *storeMock) CountersCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockCounters.RLock()
+	calls = mock.calls.Counters
+	mock.lockCounters.RUnlock()
 	return calls
 }
 

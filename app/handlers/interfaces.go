@@ -14,6 +14,7 @@ type store interface {
 	RecentHooks(max int) ([]*models.Hook, error)
 	Requests(hook string) ([]*models.Request, error)
 	PutRequest(hook string, req *models.Request) error
+	Counters() (map[string]int, error)
 	Count(name []byte) (int, error)
 }
 
