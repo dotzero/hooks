@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/dotzero/hooks/app/network"
 )
 
 const (
@@ -34,9 +36,11 @@ type Request struct {
 func NewRequest(r *http.Request) *Request {
 	_ = r.ParseForm()
 
+	clientIP := network.ClientIP(r)
+
 	return &Request{
 		Name:          tinyID(),
-		RemoteAddr:    r.RemoteAddr,
+		RemoteAddr:    clientIP.String(),
 		Method:        r.Method,
 		Path:          r.URL.Path,
 		Query:         r.URL.RawQuery,
